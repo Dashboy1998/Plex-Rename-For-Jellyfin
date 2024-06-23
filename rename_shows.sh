@@ -8,6 +8,8 @@ source vars.env
 plex_section_id="$plex_section_id_shows"
 plex_section_tag="all"
 
+echoerr() { echo "$@" 1>&2; }
+
 metadata_all=$( curl --silent --request GET \
   --url "$plex_server_protocol://$plex_server_address:$plex_server_port/library/sections/$plex_section_id/$plex_section_tag" \
   --header "X-Plex-Token: $x_plex_token" \
@@ -36,18 +38,18 @@ for ((i = 0 ; i < $metadata_all_length ; i++ )); do
                         tmdbid=$( printf "$id" | sed 's|tmdb://||' )
                     fi
                 else
-                    echo "ID found that is not TMDB, IMDB, or TVDB"
+                    echoerr "ID found that is not TMDB, IMDB, or TVDB"
                 fi
             done < <(printf "$guid" | jq --raw-output '.[].id')
         else
-            # echo "GUID does not exist for $plex_rating_key: $title"
+            echoerr "GUID does not exist for $plex_rating_key: $title"
             continue
         fi
 
         # Get year
         year=$( printf "$metadata" | jq --raw-output '.[0].year' )
         if [ "$year" == "null" ]; then
-            # echo "Year is null for $plex_rating_key: $title"
+            echoerr "Year is null for $plex_rating_key: $title"
             continue
         fi
 
@@ -63,7 +65,8 @@ for ((i = 0 ; i < $metadata_all_length ; i++ )); do
             file_name=$( basename "$file_full_path" )
             directory_name=$( dirname "$file_path" )
             if [[ "${directory_name,,}" == "${file_path}" ]]; then
-                echo "Need to rename dir: $file_path"
+                echoerr "Need to rename dir: $file_path"
+                continue
             fi
 
             file_new_name="$file_name"
@@ -83,9 +86,9 @@ for ((i = 0 ; i < $metadata_all_length ; i++ )); do
                 echo "$file_path/$file_name -> $file_path/$file_new_name"
             fi
         else
-            echo "Media length is not 1. Media length is $length for $plex_rating_key: $title"
+            echoerr "Media length is not 1. Media length is $length for $plex_rating_key: $title"
         fi 
     else
-        echo "Length of Metadata is greater not 1. Length is $length for $plex_rating_key"
+        echoerr "Length of Metadata is greater not 1. Length is $length for $plex_rating_key"
     fi
 done
