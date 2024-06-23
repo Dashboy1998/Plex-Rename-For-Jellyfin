@@ -71,11 +71,23 @@ for ((i = 0 ; i < $metadata_all_length ; i++ )); do
 
             file_new_name="$file_name"
             # Check if year exists in file name
+            file_year=$( echo "$file_name" | grep -o -P '(?<=\()[0-9]{4}(?=\))' || true)
+            if [ -n "$file_year"  ] && [[ "$file_year" =~ ^[0-9]{4}$ ]]; then
+                if [ "$year" != "$file_year" ]; then
+                    echoerr "Different year in metadata than in filename"
+                    continue
+                fi
+            elif [ -n "$file_year"  ] && ! [[ "$file_year" =~ ^[0-9]{4}$ ]]; then
+                echoerr "Multiple Years detected for $plex_rating_key: $title"
+                continue
+            fi
+            # Check if year exists in file name
             if [[ "$file_name" != *"($year)"* ]]; then
                 file_new_name="$file_new_name ($year)"
             fi
 
             # Check if TMDBID exists in file name
+            # TODO Verify another TMDBID does not exist
             if [[ "$file_name" != *"[tmdbid-$tmdbid]"* ]]; then
                 file_new_name="$file_new_name [tmdbid-$tmdbid]"
             fi
