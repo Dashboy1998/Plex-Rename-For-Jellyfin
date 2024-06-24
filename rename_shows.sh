@@ -10,6 +10,17 @@ plex_section_tag="all"
 
 echoerr() { echo "$@" 1>&2; }
 
+function get_tmdbid(){
+    if [[ "$id" == "tmdb"* ]] || [[ "$id" == "imdb"* ]] || [[ "$id" == "tvdb"* ]]; then
+        # Ignore IMDB and TVDB
+        if [[ "$id" == "tmdb"* ]]; then
+            tmdbid=$( printf "$id" | sed 's|tmdb://||' )
+        fi
+    else
+        echoerr "ID found that is not TMDB, IMDB, or TVDB"
+    fi
+}
+
 function rename_item(){
     local file_new_name="$1"
     if [ "${test,,}" == "false" ]; then
@@ -41,14 +52,7 @@ for ((i = 0 ; i < $metadata_all_length ; i++ )); do
         if [ "$guid" != "null" ]; then
             # Iterate over Guids
             while read -r id; do
-                if [[ "$id" == "tmdb"* ]] || [[ "$id" == "imdb"* ]] || [[ "$id" == "tvdb"* ]]; then
-                    # Ignore IMDB and TVDB
-                    if [[ "$id" == "tmdb"* ]]; then
-                        tmdbid=$( printf "$id" | sed 's|tmdb://||' )
-                    fi
-                else
-                    echoerr "ID found that is not TMDB, IMDB, or TVDB"
-                fi
+                get_tmdbid
             done < <(printf "$guid" | jq --raw-output '.[].id')
         else
             echoerr "GUID does not exist for $plex_rating_key: $title"
