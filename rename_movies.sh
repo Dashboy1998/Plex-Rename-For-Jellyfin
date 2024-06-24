@@ -82,33 +82,32 @@ for ((i = 0 ; i < $metadata_all_length ; i++ )); do
                 file_name="${file_name%.*}"
 
                 directory_name=$( dirname "$file_path" )
-                if [[ "${directory_name,,}" == "${file_path}" ]]; then
-                    echoerr "Need to rename dir: $file_path"
-                    continue
-                fi
+                if ! [[ "${directory_name,,}" == "${file_path}" ]]; then
+                    file_new_name="$file_name"
+                    # Check if year exists in file name
+                    file_year=$( echo "$file_name" | grep -o -P '(?<=\()[0-9]{4}(?=\))' || true)
+                    if [ -z "$file_year" ] || [[ "$file_year" =~ ^[0-9]{4}$ ]]; then
+                        if [ -z "$file_year" ] || [ "$year" == "$file_year" ]; then
+                            # Check if file name year matches
+                            if [[ "$file_name" != *"($year)"* ]]; then
+                                file_new_name="$file_new_name ($year)"
+                            fi
 
-                file_new_name="$file_name"
-                # Check if year exists in file name
-                file_year=$( echo "$file_name" | grep -o -P '(?<=\()[0-9]{4}(?=\))' || true)
-                if [ -z "$file_year" ] || [[ "$file_year" =~ ^[0-9]{4}$ ]]; then
-                    if [ -z "$file_year" ] || [ "$year" == "$file_year" ]; then
-                        # Check if file name year matches
-                        if [[ "$file_name" != *"($year)"* ]]; then
-                            file_new_name="$file_new_name ($year)"
+                            # Check if TMDBID exists in file name
+                            # TODO Verify another TMDBID does not exist
+                            if [[ "$file_name" != *"[tmdbid-$tmdbid]"* ]]; then
+                                file_new_name="$file_new_name [tmdbid-$tmdbid]"
+                            fi
+                            file_new_name="$file_new_name.$file_ext"
+                            rename_item "$file_new_name"
+                        else
+                            echoerr "Different year in metadata than in filename"
                         fi
-
-                        # Check if TMDBID exists in file name
-                        # TODO Verify another TMDBID does not exist
-                        if [[ "$file_name" != *"[tmdbid-$tmdbid]"* ]]; then
-                            file_new_name="$file_new_name [tmdbid-$tmdbid]"
-                        fi
-                        file_new_name="$file_new_name.$file_ext"
-                        rename_item "$file_new_name"
                     else
-                        echoerr "Different year in metadata than in filename"
+                        echoerr "Multiple Years detected for $plex_rating_key: $title"
                     fi
                 else
-                    echoerr "Multiple Years detected for $plex_rating_key: $title"
+                    echoerr "Need to rename dir: $file_path"
                 fi
             else
                 echoerr "Part length is not 1. Part length is $length for $plex_rating_key: $title"
