@@ -10,6 +10,15 @@ plex_section_tag="all"
 
 echoerr() { echo "$@" 1>&2; }
 
+function rename_item(){
+    local file_new_name="$1"
+    if [ "${test,,}" == "false" ]; then
+        mv "$file_path/$file_name" "$file_path/$file_new_name" "$mv_flags"
+    else
+        echo "$file_path/$file_name -> $file_path/$file_new_name"
+    fi
+}
+
 metadata_all=$( curl --silent --request GET \
   --url "$plex_server_protocol://$plex_server_address:$plex_server_port/library/sections/$plex_section_id/$plex_section_tag" \
   --header "X-Plex-Token: $x_plex_token" \
@@ -96,11 +105,7 @@ for ((i = 0 ; i < $metadata_all_length ; i++ )); do
                     file_new_name="$file_new_name [tmdbid-$tmdbid]"
                 fi
                 file_new_name="$file_new_name.$file_ext"
-                if [ "${test,,}" == "false" ]; then
-                    mv "$file_path/$file_name" "$file_path/$file_new_name" "$mv_flags"
-                else
-                    echo "$file_path/$file_name -> $file_path/$file_new_name"
-                fi
+                rename_item "$file_new_name"
             else
                 echoerr "Part length is not 1. Part length is $length for $plex_rating_key: $title"
             fi
