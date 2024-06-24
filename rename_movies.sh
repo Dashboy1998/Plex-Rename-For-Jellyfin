@@ -8,7 +8,7 @@ source vars.env
 plex_section_id="$plex_section_id_movies"
 plex_section_tag="all"
 
-echoerr() { echo "$@" 1>&2; }
+function echoerr() { echo "$@" 1>&2; }
 
 function get_tmdbid(){
   if [[ "$id" == "tmdb"* ]] || [[ "$id" == "imdb"* ]] || [[ "$id" == "tvdb"* ]]; then
