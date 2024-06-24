@@ -5,7 +5,6 @@ set -e
 source vars.env
 
 # Get Library items
-plex_section_id="$plex_section_id_movies"
 plex_section_tag="all"
 
 function echoerr() { echo "$@" 1>&2; }
@@ -42,11 +41,17 @@ function process_library(){
   # Get metadata for item
   for ((i = 0 ; i < $metadata_all_length ; i++ )); do
     plex_rating_key=$( printf "$metadata_all" | jq --raw-output ".[$i].ratingKey" )
-    metadata=$( curl --silent --request GET \
+    if [ "$plex_type" == "movie" ]; then
+      metadata=$( curl --silent --request GET \
       --url "$plex_server_protocol://$plex_server_address:$plex_server_port/library/metadata/$plex_rating_key" \
       --header "X-Plex-Token: $x_plex_token" \
       --header "Accept: application/json" | jq '[.MediaContainer.Metadata[] | {year, Guid, Media, title}]' )
-
+    elif [ "$plex_type" == "show" ]; then
+      metadata=$( curl --silent --request GET \
+      --url "$plex_server_protocol://$plex_server_address:$plex_server_port/library/metadata/$plex_rating_key" \
+      --header "X-Plex-Token: $x_plex_token" \
+      --header "Accept: application/json" | jq '[.MediaContainer.Metadata[] | {year, Guid, Location, title}]' )
+    fi
     length=$( printf "$metadata" | jq length )
     if [ $length -eq 1 ]; then
       title=$( printf "$metadata" | jq --raw-output '.[0].title'  )
@@ -62,18 +67,34 @@ function process_library(){
         year=$( printf "$metadata" | jq --raw-output '.[0].year' )
         if ! [ "$year" == "null" ]; then
           # Get paths
-          media=$( printf "$metadata" | jq '.[0].Media' )
+          if [ "$plex_type" == "movie" ]; then
+            media=$( printf "$metadata" | jq '.[0].Media' )
+          elif [ "$plex_type" == "show" ]; then
+            media=$( printf "$metadata" | jq '.[0].Location' )
+          fi
           length=$( printf "$media" | jq length )
           if [ $length -eq 1 ]; then
             # Check length of parts
-            part=$( printf "$media" | jq '.[0].Part' )
-            length=$( printf "$part" | jq length )
+            if [ "$plex_type" == "movie" ]; then
+              part=$( printf "$media" | jq '.[0].Part' )
+              length=$( printf "$part" | jq length )
+            elif [ "$plex_type" == "show" ]; then
+              part=$( printf "$media" | jq --raw-output '.[0].path' )
+              # Allows to pass length test
+              length=$( echo "1" )
+            fi
             if [ $length -eq 1 ]; then
-              file_full_path=$( printf "$part" | jq --raw-output '.[0].file' | sed "s|$plex_media_path|$media_path|")
+              if [ "$plex_type" == "movie" ]; then
+                file_full_path=$( printf "$part" | jq --raw-output '.[0].file' | sed "s|$plex_media_path|$media_path|")
+              elif [ "$plex_type" == "show" ]; then
+                file_full_path=$( printf "$part" | sed "s|$plex_media_path|$media_path|")
+              fi
               file_path=$( dirname "$file_full_path" )
               file_name=$( basename "$file_full_path" )
-              file_ext=${file_name##*.}
-              file_name="${file_name%.*}"
+              if [ "$plex_type" == "movie" ]; then
+                file_ext=${file_name##*.}
+                file_name="${file_name%.*}"
+              fi
 
               directory_name=$( dirname "$file_path" )
               if ! [[ "${directory_name,,}" == "${file_path}" ]]; then
@@ -92,7 +113,11 @@ function process_library(){
                     if [[ "$file_name" != *"[tmdbid-$tmdbid]"* ]]; then
                       file_new_name="$file_new_name [tmdbid-$tmdbid]"
                     fi
-                    file_new_name="$file_new_name.$file_ext"
+
+                    if [ "$plex_type" == "movie" ]; then
+                      file_new_name="$file_new_name.$file_ext"
+                    fi
+
                     rename_item "$file_new_name"
                   else
                     echoerr "Different year in metadata than in filename"
@@ -121,4 +146,23 @@ function process_library(){
   done
 }
 
-process_library $plex_section_id
+function process_libraries(){
+  all_libraries=$( curl --silent --request GET \
+  --url "$plex_server_protocol://$plex_server_address:$plex_server_port/library/sections" \
+  --header "X-Plex-Token: $x_plex_token" \
+  --header "Accept: application/json" | jq )
+
+  # echo "$all_libraries" | jq
+  library_length=$( printf "$all_libraries" | jq --raw-output '.MediaContainer.size' )
+  for ((library_index = 0 ; library_index < $library_length ; library_index++ )); do
+    plex_section_id=$( echo "$all_libraries" | jq --raw-output ".MediaContainer.Directory[$library_index].key" )
+    plex_type=$( echo "$all_libraries" | jq --raw-output ".MediaContainer.Directory[$library_index].type" )
+    if [ "$plex_type" == "movie" ] || [ "$plex_type" == "show" ]; then
+      process_library $plex_section_id
+    else
+      echoerr "Unknown library type. Plex Section ID: $plex_section_id. Plex Type is $plex_type"
+    fi
+  done
+}
+
+process_libraries
