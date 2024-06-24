@@ -84,7 +84,7 @@ for ((i = 0 ; i < $metadata_all_length ; i++ )); do
 
                 file_new_name="$file_name_wo_ext"
                 # Check if year exists in file name
-                file_year=$( echo "$file_name" | grep -o -P '(?<=\()[0-9]{4}(?=\))' || true)
+                file_year=$( echo "$file_name_wo_ext" | grep -o -P '(?<=\()[0-9]{4}(?=\))' || true)
                 if [ -n "$file_year"  ] && [[ "$file_year" =~ ^[0-9]{4}$ ]]; then
                     if [ "$year" != "$file_year" ]; then
                         echoerr "Different year in metadata than in filename"
