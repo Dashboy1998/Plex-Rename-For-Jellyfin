@@ -102,8 +102,9 @@ function process_library(){
                 # Check if year exists in file name
                 file_year=$( echo "$file_name" | grep -o -P '(?<=\()[0-9]{4}(?=\))' || true)
                 if [ -z "$file_year" ] || [[ "$file_year" =~ ^[0-9]{4}$ ]]; then
+                  # Check if file name year matches
                   if [ -z "$file_year" ] || [ "$year" == "$file_year" ]; then
-                    # Check if file name year matches
+                    # Add year to name if it does not exist
                     if [[ "$file_name" != *"($year)"* ]]; then
                       file_new_name="$file_new_name ($year)"
                     fi
