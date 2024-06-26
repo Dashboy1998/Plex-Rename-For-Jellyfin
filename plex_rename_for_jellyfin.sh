@@ -109,22 +109,33 @@ function process_library(){
                       file_new_name="$file_new_name ($year)"
                     fi
 
-                    # Check if TMDBID exists in file name
-                    # TODO Verify another TMDBID does not exist
-                    if [[ "$file_name" != *"[tmdbid-$tmdbid]"* ]]; then
-                      file_new_name="$file_new_name [tmdbid-$tmdbid]"
-                    fi
+                    # Check if tmdbid exists in file name
+                    file_tmdbid=$( echo "$file_name" | grep -o -P '(?<=\[tmdbid-)[0-9]+(?=\])' || true)
+                    if [ -z "$file_tmdbid" ] || [[ "$file_tmdbid" =~ ^[0-9]+$ ]]; then
+                      # Check if file name tmdbid matches
+                      if [ -z "$file_tmdbid" ] || [ "$tmdbid" == "$file_tmdbid" ]; then
+                        # Add tmdbid to name if it does not exist
+                        # Check if TMDBID exists in file name
+                        if [[ "$file_name" != *"[tmdbid-$tmdbid]"* ]]; then
+                          file_new_name="$file_new_name [tmdbid-$tmdbid]"
+                        fi
 
-                    if [ "$plex_type" == "movie" ]; then
-                      file_new_name="$file_new_name.$file_ext"
-                    fi
+                        if [ "$plex_type" == "movie" ]; then
+                          file_new_name="$file_new_name.$file_ext"
+                        fi
 
-                    rename_item "$file_new_name"
+                        rename_item "$file_new_name"
+                      else
+                        echoerr "Different TMDB IDs (plex/filename) ($tmdbid / $file_tmdbid) in metadata than in $file_name"
+                      fi
+                    else
+                      echoerr "Multiple TMDB IDs detected for $file_name"
+                    fi
                   else
-                    echoerr "Different year in metadata than in filename"
+                    echoerr "Different year (plex/filename) ($year / $file_year) in metadata than in $file_name"
                   fi
                 else
-                  echoerr "Multiple Years detected for $plex_rating_key: $title"
+                  echoerr "Multiple Years detected in $file_name"
                 fi
               else
                 echoerr "Need to rename dir: $file_path"
